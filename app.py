@@ -4,7 +4,7 @@ import openai
 import requests
 
 # Set up the OpenAI API credentials
-openai.api_key = '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'
+openai.api_key = 'YOUR-OPEN-API-KEY'
 
 # Constants
 MAX_TOKENS = 1000  # Maximum tokens for GPT completion
@@ -35,7 +35,7 @@ def analyze_code_complexity(prompt):
 
 def analyze_github_repository(user_url):
     # Create a PyGitHub instance using your personal access token
-    g = Github('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')
+    g = Github('YOUR-GITHUB-API-KEY')
 
     # Extract the username from the GitHub user URL
     username = user_url.split('/')[-1]
