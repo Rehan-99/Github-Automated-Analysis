@@ -1,13 +1,14 @@
 import streamlit as st
 from github import Github,GithubException
 import openai
-import requests
+import requests 
+from  constants import openai_key,github_token
 
 # Set up the OpenAI API credentials
-openai.api_key = 'YOUR-OPEN-API-KEY'
+openai.api_key = openai_key
 
 # Constants
-MAX_TOKENS = 1000  # Maximum tokens for GPT completion
+MAX_TOKENS = 500  # Maximum tokens for GPT completion
 
 
 # Extract the username from the GitHub user URL
@@ -18,12 +19,13 @@ global username
 def analyze_code_complexity(prompt):
     # Make a request to LangChain for code complexity analysis
     # Replace 'YOUR_LANGCHAIN_API_KEY' with your actual LangChain API key
-
+    
     response = openai.Completion.create(
-        engine='text-davinci-002',  # Specify the LangChain model
+        engine='text-davinci-003',  # Specify the LangChain model
         prompt=prompt,
         max_tokens=MAX_TOKENS,  # Set the desired length of the generated completion
-        n=1,  # Number of completions to generate
+        n=1, 
+        temperature=0.70, # Number of completions to generate
         stop=None,  # Specify any stopping criteria if needed
     )
 
@@ -34,8 +36,13 @@ def analyze_code_complexity(prompt):
 
 
 def analyze_github_repository(user_url):
+    '''
+    Analyzes the complexity of a GitHub repository.
+    :param user_url: The GitHub user URL.
+    :return: A dictionary containing the complexity score.
+    '''
     # Create a PyGitHub instance using your personal access token
-    g = Github('YOUR-GITHUB-API-KEY')
+    g = Github(github_token)
 
     # Extract the username from the GitHub user URL
     username = user_url.split('/')[-1]
@@ -159,13 +166,14 @@ def analyze_github_repository(user_url):
 
     try:
         repo_names=[]
-       
+        reponame_list=[]
         rep=fetch_repo()
-        print(rep[0])
         for repo in rep:
             repo_name =repo["name"]
             if(not fork_status(repo_name)):
                 repo_names.append(repo)
+                reponame_list.append(repo['name'])
+        print(reponame_list)
     
 
         print("fetching non fork repo completed")
@@ -191,50 +199,24 @@ def analyze_github_repository(user_url):
             unresolved_issue.append(unresolved_issues_count)
             total_commits_list.append(total_commits_count)
             total_contributers.append(contributors_count)
+        print(forks_list,resolved_issue,unresolved_issue,total_commits_list,total_contributers)
         
         print("collecting data completed")
 
-       
-        Total_Commits_wt =  0.2
-        Forks_wt=  0.1
-        Resolved_wt= 0.2
-        Unresolved_wt=  0.1
-        Contributor_wt=  0.1
+        prompt =f'''  You are given a list of metrics of respective github repositories {reponame_list} as follows:
 
-        prompt = f"""
-        **Prompt:**
-You are working with a GitHub analyzer tool. The tool requires information about various repositories to determine their complexity. For each repository, you have the following data:
-- repo names : {repo_names}
-- Total commits: {total_commits_list}
-- Forks: {forks_list}
-- Resolved issues: {resolved_issue}
-- Unresolved issues: {unresolved_issue}
-- Contributor count: {total_contributers}
+        Total commits = {total_commits_list}
+        Forks ={forks_list}
+        Resolved issues = {resolved_issue}
+        Unresolved issues = {unresolved_issue}
+        Contributor count = {total_contributers}
 
-You need to find the name of the most complex repository and its complexity score. The complexity score is calculated based on the following weights:
+        Using the given metrics, determine the strongest repository and calculate the complexity score'''
 
-- Total Commits: {Total_Commits_wt}
-- Forks: {Forks_wt}
-- Resolved Issues: {Resolved_wt}
-- Unresolved Issues: {Unresolved_wt}
-- Contributor Count: {Contributor_wt}
-
-Calculate the complexity score for each repository using the provided weights and provide the results in the following format:
-
-"Repository: [repository name], Complexity Score: [complexity score]"
-
-**Example Output:**
-Repository: clothing similarity recommendation, Complexity Score: 19481.8
-Repository: extra-codes, Complexity Score: 9742.1
-Repository: javasorting_algos, Complexity Score: 3871.8
-
-
-
-        """
         
         model_resp = analyze_code_complexity(prompt)
 
-        main_resp = {"model_resp": model_resp, "repository_lists": repo_names}
+        main_resp = {"model_resp": model_resp}
         return main_resp
 
     except Exception as e:
@@ -246,17 +228,18 @@ Repository: javasorting_algos, Complexity Score: 3871.8
 
 
 
-analyze_code_complexity
 # Streamlit app
-def main():
-    st.title('GitHub Repository Analyzer')
+def main() :
+    st.title('Github Automated Analysis')
     user_url = st.text_input("Enter the GitHub user URL")
-    username = user_url.split('/')[-1]
     if st.button("Analyze"):
         if user_url:
             main_resp = analyze_github_repository(user_url)
+            # main_resp = analyze_code_complexity(prompt)
             if main_resp:
                 st.write("The most complex repository is", main_resp)
+                
+                
                 # st.write("Model output:", main_resp['model_resp'])
                 # st.write("Complexity Score:", repository_info['complexity'])
             else:
